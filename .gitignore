@@ -1,2 +1,4 @@
 cli/target/
 server/target/
+.idea/
+server/.idea/
