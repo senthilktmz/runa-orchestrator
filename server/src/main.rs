@@ -1,20 +1,35 @@
+use std::future::Future;
+use std::pin::Pin;
+use actix_web::{web, App, HttpServer, Responder, HttpResponse};
 
-mod aes_gcm_util;
-
-use crate::aes_gcm_util::{
-    aes_gcm_key_from_string_literal, encrypt, decrypt, AesGcmKey,
-};
-
-fn main() {
-    let associated_data = b"sksks";
-    let data = b"jsjsjs";
-    let key  = aes_gcm_key_from_string_literal(b"0123456789abcdef0123456789abcdef");
-    println!("Original data: {:?}", data);
-    let (ciphered, nonce) =  encrypt(&key,   data, b"sksks");
-    println!("Encrypted data: {:?}", ciphered);
-    let plain_text = decrypt(&key, &nonce, &ciphered, associated_data);
-    println!("Decrypted data: {:?}", plain_text);
+struct Route {
+    path: &'static str,
+    handler: fn() -> Pin<Box<dyn Future<Output =HttpResponse >>>
 }
 
-//
-//
+async fn health() -> HttpResponse {
+    HttpResponse::Ok().json(serde_json::json!({ "status": "healthy" }))
+}
+
+fn boxed_health() -> Pin<Box<dyn Future<Output = HttpResponse >>> {
+    Box::pin(health())
+}
+
+const ROUTES_LIST: &[Route] = &[
+    Route{
+        path: "/health",
+        handler: boxed_health
+    },
+];
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| {
+        let tmpApp = ROUTES_LIST.iter().fold(App::new(), |app, route| {
+            app.route(route.path,  web::get().to(route.handler))
+        });
+        tmpApp
+    }).bind("127.0.0.1:8080")?.run().await
+}
+
+
