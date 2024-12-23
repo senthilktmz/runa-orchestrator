@@ -53,12 +53,16 @@ impl CipherItem<String> {
 }
 
 pub fn encrypt_bytes(
-    key: Key<Aes256Gcm>,
+    tmp_key : &[u8; 32],
+    //key: Key<Aes256Gcm>,
     plaintext: &[u8],
     associated_data: &[u8],
 ) -> CipherItem<String> {
 
-    let cipher = Aes256Gcm::new(&key);
+    let key0 = <Key<Aes256Gcm>>::from(aes_gcm_key_from_string_literal(tmp_key));
+    let key0 = <Key<Aes256Gcm>>::from(key0);
+
+    let cipher = Aes256Gcm::new(&key0);
     let nonce = Aes256Gcm::generate_nonce(&mut OsRng); // 96-bits; unique per encryption
 
     let encrypted_bytes = cipher
@@ -82,13 +86,14 @@ pub fn encrypt_bytes(
 }
 
 fn bash_script_run_test_01() -> Result<(), Box<dyn std::error::Error>> {
-    let key = <Key<Aes256Gcm>>::from(aes_gcm_key_from_string_literal(b"0123456789abcdef0123456789abcdef"));
-    let ci = encrypt_bytes(<Key<Aes256Gcm>>::from(key),
-             RUN_BASH_SCRIPT_PAYLOAD01.as_bytes(), b"");
+
+    let test_key= b"0123456789abcdef0123456789abcdef";
+    let ci = encrypt_bytes(test_key, RUN_BASH_SCRIPT_PAYLOAD01.as_bytes(), b"");
     println!("jjjjjj");
     let json_str = ci.to_json()?;
     println!("{}", json_str);
 
+    let key = <Key<Aes256Gcm>>::from(aes_gcm_key_from_string_literal(test_key));
     let d = ci.decrypt(key)?;
     println!("kkkkkkkk");
     println!("{}", String::from_utf8(d)?);
