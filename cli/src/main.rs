@@ -3,11 +3,15 @@ mod aes_gcm_util;
 use std::error::Error;
 use crate::aes_gcm_util::aes_gcm_key_from_string_literal;
 use aes_gcm::aead::consts::U12;
-use aes_gcm::Nonce;
 use aes_gcm_util::{decrypt, encrypt};
 use base64::{engine::general_purpose, Engine};
 use hex;
 use serde::Serialize;
+use aes_gcm::aead::{Aead, Payload};
+use aes_gcm::{
+    aead::{AeadCore, AeadInPlace, KeyInit, OsRng},
+    Aes256Gcm, Key, Nonce,
+};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     bash_script_run_test_01()?;
@@ -16,88 +20,60 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 #[derive(Serialize)]
 struct CipherItem<T> {
-    #[serde(skip_serializing)]
-    original_text: T,
-    #[serde(skip_serializing)]
-    is_delete_original_string: bool,
     ciphertext: T,
     nonce: T,
     associated_data: T
 }
 
 impl CipherItem<String> {
-    fn encrypt_text(&mut self) -> Result<(), Box<dyn Error>> {
-        let payload = self.original_text.as_str();
-        let associated_data = self.associated_data.as_bytes();
-        let (ciphertext, nonce_str) = encrypt_payload(payload, associated_data)?;
-        self.ciphertext = ciphertext;
-        self.nonce = nonce_str;
-        if self.is_delete_original_string {
-            self.original_text.clear();
-        }
-        Ok(())
-    }
-
     fn to_json(&self) -> Result<String, Box<dyn Error>> {
         let json_string = serde_json::to_string(&self)?;
         Ok(json_string)
     }
-
 }
 
-impl CipherItem<String> {
-    fn encrypt_text2(&mut self) -> Result<(), Box<dyn Error>> {
-        let payload = self.original_text.as_str();
-        let associated_data = self.associated_data.as_bytes();
+pub fn encrypt3(
+    key: Key<Aes256Gcm>,
+    plaintext: &[u8],
+    associated_data: &[u8],
+) -> CipherItem<String> {
 
-        let plaintext = payload.as_bytes();
-        let key = aes_gcm_key_from_string_literal(b"0123456789abcdef0123456789abcdef");
-        let (ciphered, nonce) = encrypt(&key, payload.as_bytes(), associated_data);
-        let b64_string = general_purpose::STANDARD.encode(ciphered);
-        println!("Encrypted data as b64 : {:?}", b64_string);
-        let nonce_str = hex::encode(nonce);
+    let cipher = Aes256Gcm::new(&key);
+    let nonce = Aes256Gcm::generate_nonce(&mut OsRng); // 96-bits; unique per encryption
 
-        self.ciphertext = b64_string;
-        self.nonce = nonce_str;
-        if self.is_delete_original_string {
-            self.original_text.clear();
-        }
-        Ok(())
+    let encrypted_bytes = cipher
+        .encrypt(
+            &nonce,
+            Payload {
+                msg: plaintext,
+                aad: associated_data,
+            },
+        )
+        .expect("Encryption failed");
+
+    let ciphertext_b64 = general_purpose::STANDARD.encode(encrypted_bytes);
+    let nonce_b64 = general_purpose::STANDARD.encode(nonce);
+
+    CipherItem {
+        ciphertext: ciphertext_b64,
+        nonce: nonce_b64,
+        associated_data: general_purpose::STANDARD.encode(associated_data),
     }
 }
 
 fn bash_script_run_test_01() -> Result<(), Box<dyn std::error::Error>> {
-
-    let mut cipher_item = CipherItem {
-        original_text: String::from(RUN_BASH_SCRIPT_PAYLOAD01),
-        ciphertext: String::new(),
-        nonce: String::new(),
-        associated_data: String::from("lsisusu"),
-        is_delete_original_string: false,
-    };
-
-    cipher_item.encrypt_text2()?;
-    let json_str = cipher_item.to_json()?;
-
-    println!("yyyyyyyyy");
+    let key2 = aes_gcm_key_from_string_literal(b"0123456789abcdef0123456789abcdef");
+    let ci = encrypt3(<Key<Aes256Gcm>>::from(key2),
+             RUN_BASH_SCRIPT_PAYLOAD01.as_bytes(), b"");
+    println!("jjjjjj");
+    let json_str = ci.to_json()?;
     println!("{}", json_str);
 
     Ok(())
 }
 
 
-fn encrypt_payload(
-    payload: &str,
-    associated_data: &[u8]
-) -> Result<(String, String), Box<dyn std::error::Error>> {
-    let plaintext = payload.as_bytes();
-    let key = aes_gcm_key_from_string_literal(b"0123456789abcdef0123456789abcdef");
-    let (ciphered, nonce) = encrypt(&key, payload.as_bytes(), associated_data);
-    let b64_string = general_purpose::STANDARD.encode(ciphered);
-    println!("Encrypted data as b64 : {:?}", b64_string);
-    let nonce_str = hex::encode(nonce);
-    Ok((b64_string, nonce_str))
-}
+
 
 fn encrypt_then_to_b64_string_test(
     payload: &str,
