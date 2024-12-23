@@ -26,25 +26,19 @@ struct CipherItem<T> {
 
 
 impl CipherItem<String> {
-    pub fn decrypt(&self, key: Key<Aes256Gcm>) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-        println!("Decrypting...");
+}
 
-        // Decode nonce from Base64
+impl CipherItem<String> {
+    fn to_json(&self) -> Result<String, Box<dyn Error>> {
+        let json_string = serde_json::to_string(&self)?;
+        Ok(json_string)
+    }
+    pub fn decrypt(&self, key: Key<Aes256Gcm>) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         let nonce_bytes = general_purpose::STANDARD.decode(&self.nonce)?;
         let nonce = Nonce::from_slice(&nonce_bytes);
-        println!("Decoded Nonce: {:?}", nonce);
-
-        // Decode ciphertext from Base64
         let ciphertext = general_purpose::STANDARD.decode(&self.ciphertext)?;
-        println!("Decoded Ciphertext: {:?}", ciphertext);
-
-        // Decode associated data
         let associated_data = self.associated_data.as_bytes();
-
-        // Initialize cipher
         let cipher = Aes256Gcm::new(&key);
-
-        // Decrypt the payload
         let decrypted_bytes = cipher
             .decrypt(
                 nonce,
@@ -54,53 +48,11 @@ impl CipherItem<String> {
                 },
             )
             .map_err(|e| format!("Decryption failed: {:?}", e))?;
-        println!("Decryption successful!");
         Ok(decrypted_bytes)
     }
 }
 
-impl CipherItem<String> {
-    fn to_json(&self) -> Result<String, Box<dyn Error>> {
-        let json_string = serde_json::to_string(&self)?;
-        Ok(json_string)
-    }
-
-    pub fn decrypt3(&self, key: Key<Aes256Gcm>) -> Result<Vec<u8>, Box<dyn Error>> {
-        println!("111");
-        let ciphertext = self.ciphertext.as_bytes(); // Convert String to &[u8]
-        println!("222");
-        let associated_data = self.associated_data.as_bytes(); // Convert String to &[u8]
-        println!("333");
-        println!("{}", self.nonce);
-
-        let decoded_nonce = general_purpose::STANDARD.decode(&self.nonce)?;
-
-        // Decode nonce from Hex back to a byte array
-        let nonce_bytes = hex::decode(decoded_nonce)?;
-        println!("444");
-        let nonce = Nonce::from_slice(&nonce_bytes); // Convert &[u8] to Nonce
-        println!("6662");
-
-        // Initialize cipher
-        let cipher = Aes256Gcm::new(&key);
-        println!("777");
-        // Decrypt the payload
-        let decrypted_bytes = cipher
-            .decrypt(
-                nonce,
-                Payload {
-                    msg: ciphertext,
-                    aad: associated_data,
-                },
-            )
-            .expect("Decryption failed");
-        println!("8888");
-        Ok(decrypted_bytes)
-    }
-
-}
-
-pub fn encrypt3(
+pub fn encrypt_bytes(
     key: Key<Aes256Gcm>,
     plaintext: &[u8],
     associated_data: &[u8],
@@ -131,7 +83,7 @@ pub fn encrypt3(
 
 fn bash_script_run_test_01() -> Result<(), Box<dyn std::error::Error>> {
     let key = <Key<Aes256Gcm>>::from(aes_gcm_key_from_string_literal(b"0123456789abcdef0123456789abcdef"));
-    let ci = encrypt3(<Key<Aes256Gcm>>::from(key),
+    let ci = encrypt_bytes(<Key<Aes256Gcm>>::from(key),
              RUN_BASH_SCRIPT_PAYLOAD01.as_bytes(), b"");
     println!("jjjjjj");
     let json_str = ci.to_json()?;
