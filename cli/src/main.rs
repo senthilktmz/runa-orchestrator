@@ -53,16 +53,16 @@ impl CipherItem<String> {
 }
 
 pub fn encrypt_bytes(
-    tmp_key : &[u8; 32],
+    key : &[u8; 32],
     //key: Key<Aes256Gcm>,
     plaintext: &[u8],
     associated_data: &[u8],
 ) -> CipherItem<String> {
 
-    let key0 = <Key<Aes256Gcm>>::from(aes_gcm_key_from_string_literal(tmp_key));
-    let key0 = <Key<Aes256Gcm>>::from(key0);
-
-    let cipher = Aes256Gcm::new(&key0);
+    let key = <Key<Aes256Gcm>>::from(aes_gcm_key_from_string_literal(key));
+    let key = <Key<Aes256Gcm>>::from(key);
+    
+    let cipher = Aes256Gcm::new(&key);
     let nonce = Aes256Gcm::generate_nonce(&mut OsRng); // 96-bits; unique per encryption
 
     let encrypted_bytes = cipher
