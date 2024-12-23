@@ -45,6 +45,27 @@ impl CipherItem<String> {
 
 }
 
+impl CipherItem<String> {
+    fn encrypt_text2(&mut self) -> Result<(), Box<dyn Error>> {
+        let payload = self.original_text.as_str();
+        let associated_data = self.associated_data.as_bytes();
+
+        let plaintext = payload.as_bytes();
+        let key = aes_gcm_key_from_string_literal(b"0123456789abcdef0123456789abcdef");
+        let (ciphered, nonce) = encrypt(&key, payload.as_bytes(), associated_data);
+        let b64_string = general_purpose::STANDARD.encode(ciphered);
+        println!("Encrypted data as b64 : {:?}", b64_string);
+        let nonce_str = hex::encode(nonce);
+
+        self.ciphertext = b64_string;
+        self.nonce = nonce_str;
+        if self.is_delete_original_string {
+            self.original_text.clear();
+        }
+        Ok(())
+    }
+}
+
 fn bash_script_run_test_01() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut cipher_item = CipherItem {
@@ -55,10 +76,10 @@ fn bash_script_run_test_01() -> Result<(), Box<dyn std::error::Error>> {
         is_delete_original_string: false,
     };
 
-    cipher_item.encrypt_text()?;
+    cipher_item.encrypt_text2()?;
     let json_str = cipher_item.to_json()?;
 
-    println!("lllllllllllllll");
+    println!("yyyyyyyyy");
     println!("{}", json_str);
 
     Ok(())
@@ -69,18 +90,12 @@ fn encrypt_payload(
     payload: &str,
     associated_data: &[u8]
 ) -> Result<(String, String), Box<dyn std::error::Error>> {
-    println!("Running test {:?}", "encrypt_then_to_b64_string_test");
-    //let associated_data = b"sksks";
     let plaintext = payload.as_bytes();
     let key = aes_gcm_key_from_string_literal(b"0123456789abcdef0123456789abcdef");
     let (ciphered, nonce) = encrypt(&key, payload.as_bytes(), associated_data);
     let b64_string = general_purpose::STANDARD.encode(ciphered);
     println!("Encrypted data as b64 : {:?}", b64_string);
     let nonce_str = hex::encode(nonce);
-    // println!("nonce data : {:?}", nonce_str);
-    //
-    // let nonce_vec8 = hex::decode(nonce_str)?;
-    // let reconstructed_nonce = Nonce::<U12>::from_slice(nonce_vec8.as_slice());
     Ok((b64_string, nonce_str))
 }
 
