@@ -88,8 +88,8 @@ pub fn encrypt_bytes(
 fn bash_script_run_test_01() -> Result<(), Box<dyn std::error::Error>> {
 
     let test_key= b"0123456789abcdef0123456789abcdef";
-    let ci = encrypt_bytes(test_key, RUN_BASH_SCRIPT_PAYLOAD01.as_bytes(), b"");
-    println!("jjjjjj");
+    let associated_data = b"";
+    let ci = encrypt_bytes(test_key, RUN_BASH_SCRIPT_PAYLOAD01.as_bytes(), associated_data);
     let json_str = ci.to_json()?;
     println!("{}", json_str);
 
