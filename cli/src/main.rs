@@ -9,7 +9,7 @@ use aes_gcm::{
 use aes_gcm_util::{decrypt, encrypt};
 use base64::{engine::general_purpose, Engine};
 use hex;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::error::Error;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -85,15 +85,22 @@ fn client_encrypt_and_server_decrypt_test() -> Result<(), Box<dyn std::error::Er
     let test_key = b"0123456789abcdef0123456789abcdef";
     let associated_data = b"";
 
-    let json_str = encrypt_payload(test_key, RUN_BASH_SCRIPT_PAYLOAD01.as_bytes(), associated_data)?;
+    let json_str = encrypt_payload(
+        test_key,
+        RUN_BASH_SCRIPT_PAYLOAD01.as_bytes(),
+        associated_data,
+    )?;
 
-    test_decrypt(json_str, test_key)?;
+    decrypt_payload(json_str, test_key)?;
 
     Ok(())
 }
 
-fn encrypt_payload(key: &[u8; 32], plain_text :&[u8], associated_data: &[u8]) -> Result<((String)), Box<dyn std::error::Error>> {
-
+fn encrypt_payload(
+    key: &[u8; 32],
+    plain_text: &[u8],
+    associated_data: &[u8],
+) -> Result<((String)), Box<dyn std::error::Error>> {
     println!("Encrypting {} bytes now", plain_text.len());
 
     let associated_data = b"";
@@ -108,14 +115,16 @@ fn encrypt_payload(key: &[u8; 32], plain_text :&[u8], associated_data: &[u8]) ->
     Ok((json_str))
 }
 
-fn test_decrypt(json_str: String,  test_key: &[u8; 32]) -> Result<(), Box<dyn std::error::Error>>  {
+fn decrypt_payload(
+    json_str: String,
+    test_key: &[u8; 32],
+) -> Result<(), Box<dyn std::error::Error>> {
+    println!("Decrypting {} bytes", json_str.len());
     let ci: CipherItem<String> = serde_json::from_str(json_str.as_str())?;
     let key = <Key<Aes256Gcm>>::from(aes_gcm_key_from_string_literal(test_key));
     let d = ci.decrypt(key)?;
-    println!("Decryption only from json");
     println!("{}", String::from_utf8(d)?);
     Ok(())
-
 }
 
 fn encrypt_then_to_b64_string_test(
