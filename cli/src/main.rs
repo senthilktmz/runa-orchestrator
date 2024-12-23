@@ -1,16 +1,16 @@
 mod aes_gcm_util;
-use std::error::Error;
 use crate::aes_gcm_util::{aes_gcm_key_from_string_literal, AesGcmKey};
 use aes_gcm::aead::consts::U12;
-use aes_gcm_util::{decrypt, encrypt};
-use base64::{engine::general_purpose, Engine};
-use hex;
-use serde::Serialize;
 use aes_gcm::aead::{Aead, Payload};
 use aes_gcm::{
     aead::{AeadCore, AeadInPlace, KeyInit, OsRng},
     Aes256Gcm, Key, Nonce,
 };
+use aes_gcm_util::{decrypt, encrypt};
+use base64::{engine::general_purpose, Engine};
+use hex;
+use serde::Serialize;
+use std::error::Error;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     bash_script_run_test_01()?;
@@ -21,12 +21,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 struct CipherItem<T> {
     ciphertext: T,
     nonce: T,
-    associated_data: T
+    associated_data: T,
 }
 
-
-impl CipherItem<String> {
-}
+impl CipherItem<String> {}
 
 impl CipherItem<String> {
     fn to_json(&self) -> Result<String, Box<dyn Error>> {
@@ -53,15 +51,13 @@ impl CipherItem<String> {
 }
 
 pub fn encrypt_bytes(
-    key : &[u8; 32],
-    //key: Key<Aes256Gcm>,
+    key: &[u8; 32],
     plaintext: &[u8],
     associated_data: &[u8],
 ) -> CipherItem<String> {
-
     let key = <Key<Aes256Gcm>>::from(aes_gcm_key_from_string_literal(key));
     let key = <Key<Aes256Gcm>>::from(key);
-    
+
     let cipher = Aes256Gcm::new(&key);
     let nonce = Aes256Gcm::generate_nonce(&mut OsRng); // 96-bits; unique per encryption
 
@@ -86,10 +82,13 @@ pub fn encrypt_bytes(
 }
 
 fn bash_script_run_test_01() -> Result<(), Box<dyn std::error::Error>> {
-
-    let test_key= b"0123456789abcdef0123456789abcdef";
+    let test_key = b"0123456789abcdef0123456789abcdef";
     let associated_data = b"";
-    let ci = encrypt_bytes(test_key, RUN_BASH_SCRIPT_PAYLOAD01.as_bytes(), associated_data);
+    let ci = encrypt_bytes(
+        test_key,
+        RUN_BASH_SCRIPT_PAYLOAD01.as_bytes(),
+        associated_data,
+    );
     let json_str = ci.to_json()?;
     println!("{}", json_str);
 
@@ -100,9 +99,6 @@ fn bash_script_run_test_01() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-
-
-
 
 fn encrypt_then_to_b64_string_test(
     payload: &str,
