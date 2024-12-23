@@ -19,9 +19,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 #[derive(Serialize)]
 struct CipherItem<T> {
-    ciphertext: T,
-    nonce: T,
-    associated_data: T,
+    c: T,
+    n: T,
+    a: T,
 }
 
 impl CipherItem<String> {}
@@ -32,10 +32,10 @@ impl CipherItem<String> {
         Ok(json_string)
     }
     pub fn decrypt(&self, key: Key<Aes256Gcm>) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-        let nonce_bytes = general_purpose::STANDARD.decode(&self.nonce)?;
+        let nonce_bytes = general_purpose::STANDARD.decode(&self.n)?;
         let nonce = Nonce::from_slice(&nonce_bytes);
-        let ciphertext = general_purpose::STANDARD.decode(&self.ciphertext)?;
-        let associated_data = self.associated_data.as_bytes();
+        let ciphertext = general_purpose::STANDARD.decode(&self.c)?;
+        let associated_data = self.a.as_bytes();
         let cipher = Aes256Gcm::new(&key);
         let decrypted_bytes = cipher
             .decrypt(
@@ -75,9 +75,9 @@ pub fn encrypt_bytes(
     let nonce_b64 = general_purpose::STANDARD.encode(nonce);
 
     CipherItem {
-        ciphertext: ciphertext_b64,
-        nonce: nonce_b64,
-        associated_data: general_purpose::STANDARD.encode(associated_data),
+        c: ciphertext_b64,
+        n: nonce_b64,
+        a: general_purpose::STANDARD.encode(associated_data),
     }
 }
 
@@ -90,11 +90,12 @@ fn bash_script_run_test_01() -> Result<(), Box<dyn std::error::Error>> {
         associated_data,
     );
     let json_str = ci.to_json()?;
+    println!("encrypted request data ");
     println!("{}", json_str);
 
     let key = <Key<Aes256Gcm>>::from(aes_gcm_key_from_string_literal(test_key));
     let d = ci.decrypt(key)?;
-    println!("kkkkkkkk");
+    println!("decrypted request data on server side");
     println!("{}", String::from_utf8(d)?);
 
     Ok(())
