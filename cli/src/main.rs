@@ -13,7 +13,7 @@ use serde::{Serialize, Deserialize};
 use std::error::Error;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    bash_script_run_test_01()?;
+    client_encrypt_and_server_decrypt_test()?;
     Ok(())
 }
 
@@ -81,7 +81,7 @@ pub fn encrypt_bytes(
     }
 }
 
-fn bash_script_run_test_01() -> Result<(), Box<dyn std::error::Error>> {
+fn client_encrypt_and_server_decrypt_test() -> Result<(), Box<dyn std::error::Error>> {
     let test_key = b"0123456789abcdef0123456789abcdef";
     let associated_data = b"";
 
