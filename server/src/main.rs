@@ -1,15 +1,9 @@
-
-mod health_calls;
 mod generic_handlers;
+mod health_calls;
+use runautils::actix_server_util::{serve_requests, Route};
 
-use runautils::actix_server_util::{Route, serve_requests};
-//use actix::{StreamHandler};
-//use actix_web::{ HttpResponse};
-//use actix_web_actors::ws;
-
-
-use crate::health_calls::{boxed_health};
 use crate::generic_handlers::{boxed_get_req, boxed_post_handler, boxed_websocket_handler};
+use crate::health_calls::boxed_health;
 
 const ROUTES_LIST: &[Route] = &[
     Route {
@@ -19,11 +13,11 @@ const ROUTES_LIST: &[Route] = &[
         websocket_handler: None,
     },
     Route {
-    path: "/get_req",
-    get_handler: Some(boxed_get_req),
-    post_handler: None,
-    websocket_handler: None,
-},
+        path: "/get_req",
+        get_handler: Some(boxed_get_req),
+        post_handler: None,
+        websocket_handler: None,
+    },
     Route {
         path: "/post_req",
         get_handler: None,
@@ -37,10 +31,6 @@ const ROUTES_LIST: &[Route] = &[
         websocket_handler: Some(boxed_websocket_handler),
     },
 ];
-
-/// WebSocket actor
-
-
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {

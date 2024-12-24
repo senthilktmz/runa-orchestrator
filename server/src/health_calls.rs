@@ -1,4 +1,3 @@
-
 use actix_web::HttpResponse;
 use std::future::Future;
 use std::pin::Pin;
