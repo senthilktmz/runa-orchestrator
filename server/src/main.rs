@@ -42,6 +42,10 @@ const ROUTES_LIST: &[Route] = &[
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    serve_requests().await
+}
+
+async fn serve_requests() -> std::io::Result<()> {
     println!("Starting server");
     HttpServer::new(|| {
         let tmp_app = ROUTES_LIST.iter().fold(App::new(), |app, route| {
@@ -59,5 +63,4 @@ async fn main() -> std::io::Result<()> {
     .run()
     .await
 }
-
 
