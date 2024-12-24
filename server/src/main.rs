@@ -10,6 +10,7 @@ struct Route {
     path: &'static str,
     get_handler: Option<fn() -> Pin<Box<dyn Future<Output = HttpResponse>>>>,
     post_handler: Option<fn(web::Json<String>, &'static str) -> Pin<Box<dyn Future<Output = HttpResponse>>>>,
+    websocket_handler: Option<fn(actix_web::HttpRequest, actix_web::web::Payload) -> Pin<Box<dyn Future<Output = Result<HttpResponse, actix_web::Error>>>>>,
 }
 
 async fn health() -> HttpResponse {
@@ -28,16 +29,32 @@ fn boxed_post_handler(body: web::Json<String>, path: &'static str) -> Pin<Box<dy
     Box::pin(post_req(body, path))
 }
 
+async fn websocket_handler(req: actix_web::HttpRequest, stream: actix_web::web::Payload) -> Result<HttpResponse, actix_web::Error> {
+    ws::start(WebSocketActor, &req, stream)
+}
+
+fn boxed_websocket_handler(req: actix_web::HttpRequest, stream: actix_web::web::Payload) -> Pin<Box<dyn Future<Output = Result<HttpResponse, actix_web::Error>>>> {
+    Box::pin(websocket_handler(req, stream))
+}
+
 const ROUTES_LIST: &[Route] = &[
     Route {
         path: "/health",
         get_handler: Some(boxed_health),
         post_handler: None,
+        websocket_handler: None,
     },
     Route {
         path: "/post_req",
         get_handler: None,
         post_handler: Some(boxed_post_handler),
+        websocket_handler: None,
+    },
+    Route {
+        path: "/ws",
+        get_handler: None,
+        post_handler: None,
+        websocket_handler: Some(boxed_websocket_handler),
     },
 ];
 
@@ -69,10 +86,6 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WebSocketActor {
 
 async fn serve_requests(
     routes_list: Vec<Route>,
-    websocket_handler: fn(
-        actix_web::HttpRequest,
-        actix_web::web::Payload,
-    ) -> Pin<Box<dyn Future<Output = Result<HttpResponse, actix_web::Error>>>>,
 ) -> std::io::Result<()> {
     println!("Starting server");
 
@@ -86,7 +99,7 @@ async fn serve_requests(
                     app
                 };
 
-                if let Some(post_handler) = route.post_handler {
+                let app = if let Some(post_handler) = route.post_handler {
                     let path = route.path;
                     app.route(
                         route.path,
@@ -96,11 +109,16 @@ async fn serve_requests(
                     )
                 } else {
                     app
+                };
+
+                if let Some(ws_handler) = route.websocket_handler {
+                    app.route(route.path, web::get().to(ws_handler))
+                } else {
+                    app
                 }
             });
 
-        // Add WebSocket route using the wrapped handler
-        app.route("/ws", web::get().to(websocket_handler))
+        app
     })
     .bind("127.0.0.1:8080")?
     .run()
@@ -111,13 +129,13 @@ async fn serve_requests(
 async fn main() -> std::io::Result<()> {
     let routes = ROUTES_LIST.to_vec();
 
-    // WebSocket handler
-    let websocket_handler = |req, stream| {
-        Box::pin(ws_handler(req, stream))
-            as Pin<Box<dyn Future<Output = Result<HttpResponse, actix_web::Error>>>>
-    };
+//    // WebSocket handler
+//    let websocket_handler = |req, stream| {
+//        Box::pin(ws_handler(req, stream))
+//            as Pin<Box<dyn Future<Output = Result<HttpResponse, actix_web::Error>>>>
+//    };
 
-    serve_requests(routes, websocket_handler).await
+    serve_requests(routes).await
 }
 
 /// WebSocket handler function
