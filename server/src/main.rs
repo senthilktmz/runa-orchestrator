@@ -43,7 +43,7 @@ const ROUTES_LIST: &[Route] = &[
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let routes = ROUTES_LIST.to_vec();
+    let routes = ROUTES_LIST.to_vec().clone();
     serve_requests(routes).await
 }
 
@@ -51,8 +51,7 @@ async fn serve_requests(routes_list: Vec<Route>) -> std::io::Result<()> {
     println!("Starting server");
 
     HttpServer::new(move || {
-        let routes = routes_list.clone();
-        routes.iter().fold(App::new(), |app, route| match route.request_type {
+        routes_list.iter().fold(App::new(), |app, route| match route.request_type {
             Method::GET => app.route(route.path, web::get().to(route.handler)),
             Method::POST => app.route(route.path, web::post().to(|body: String| async move {
                 post_req(body).await
