@@ -1,3 +1,4 @@
+use runautils::actix_server_util::{Route, serve_requests};
 use actix::{Actor, ActorContext, AsyncContext, StreamHandler};
 use actix_web::{http::Method, web, App, HttpResponse, HttpServer};
 use actix_web_actors::ws;
@@ -5,13 +6,6 @@ use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
 
-#[derive(Clone)]
-struct Route {
-    path: &'static str,
-    get_handler: Option<fn() -> Pin<Box<dyn Future<Output = HttpResponse>>>>,
-    post_handler: Option<fn(web::Json<String>, &'static str) -> Pin<Box<dyn Future<Output = HttpResponse>>>>,
-    websocket_handler: Option<fn(actix_web::HttpRequest, actix_web::web::Payload) -> Pin<Box<dyn Future<Output = Result<HttpResponse, actix_web::Error>>>>>,
-}
 
 async fn health() -> HttpResponse {
     HttpResponse::Ok().json(serde_json::json!({ "status": "healthy" }))
@@ -84,57 +78,9 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WebSocketActor {
     }
 }
 
-async fn serve_requests(
-    routes_list: Vec<Route>,
-) -> std::io::Result<()> {
-    println!("Starting server");
-
-    HttpServer::new(move || {
-        let app = routes_list
-            .iter()
-            .fold(App::new(), |app, route| {
-                let app = if let Some(get_handler) = route.get_handler {
-                    app.route(route.path, web::get().to(get_handler))
-                } else {
-                    app
-                };
-
-                let app = if let Some(post_handler) = route.post_handler {
-                    let path = route.path;
-                    app.route(
-                        route.path,
-                        web::post().to(move |body: web::Json<String>| async move {
-                            post_handler(body, path).await
-                        }),
-                    )
-                } else {
-                    app
-                };
-
-                if let Some(ws_handler) = route.websocket_handler {
-                    app.route(route.path, web::get().to(ws_handler))
-                } else {
-                    app
-                }
-            });
-
-        app
-    })
-    .bind("127.0.0.1:8080")?
-    .run()
-    .await
-}
-
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let routes = ROUTES_LIST.to_vec();
-
-//    // WebSocket handler
-//    let websocket_handler = |req, stream| {
-//        Box::pin(ws_handler(req, stream))
-//            as Pin<Box<dyn Future<Output = Result<HttpResponse, actix_web::Error>>>>
-//    };
-
     serve_requests(routes).await
 }
 
