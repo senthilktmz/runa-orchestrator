@@ -136,6 +136,7 @@ dependencies = [
  "base64 0.22.1",
  "hex",
  "rand",
+ "runautils",
  "serde",
  "serde_json",
  "tokio",
@@ -841,6 +842,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "03a862b389f93e68874fbf580b9de08dd02facb9a788ebadaf4a3fd33cf58834"
 dependencies = [
  "bitflags",
+]
+
+[[package]]
+name = "runautils"
+version = "0.1.0"
+source = "git+https://github.com/senthilktmz/runautils#b264b6867bd7fff5c0eced5845362bc4a8dbb984"
+dependencies = [
+ "aes-gcm",
+ "base64 0.22.1",
+ "hex",
+ "rand",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
