@@ -1,3 +1,6 @@
+
+mod health_calls;
+
 use runautils::actix_server_util::{Route, serve_requests};
 use actix::{Actor, ActorContext, AsyncContext, StreamHandler};
 use actix_web::{http::Method, web, App, HttpResponse, HttpServer};
@@ -6,15 +9,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
 
-
-async fn health() -> HttpResponse {
-    HttpResponse::Ok().json(serde_json::json!({ "status": "healthy" }))
-}
-
-fn boxed_health() -> Pin<Box<dyn Future<Output = HttpResponse>>> {
-    Box::pin(health())
-}
-
+use crate::health_calls::{boxed_health};
 async fn post_req(body: web::Json<String>, path: &'static str) -> HttpResponse {
     HttpResponse::Ok().json(serde_json::json!({ "received": *body, "path": path }))
 }
