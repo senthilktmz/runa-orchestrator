@@ -2,6 +2,7 @@ use std::future::Future;
 use std::pin::Pin;
 use actix_web::{guard::Method, http::Method, web, App, HttpResponse, HttpServer, Responder};
 
+#[derive(Clone)]
 struct Route {
     path: &'static str,
     handler: fn() -> Pin<Box<dyn Future<Output =HttpResponse >>>,
@@ -42,24 +43,24 @@ const ROUTES_LIST: &[Route] = &[
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    serve_requests().await
+    let routes = ROUTES_LIST.to_vec();
+    serve_requests(routes).await
 }
 
-async fn serve_requests() -> std::io::Result<()> {
+async fn serve_requests(routes_list: Vec<Route>) -> std::io::Result<()> {
     println!("Starting server");
-    HttpServer::new(|| {
-        let tmp_app = ROUTES_LIST.iter().fold(App::new(), |app, route| {
-            match route.request_type {
-                Method::GET => app.route(route.path, web::get().to(route.handler)),
-                Method::POST => app.route(route.path, web::post().to(|body:String| async move {
-                    post_req(body).await
-                })),
-                _ => app,
-            }
-        });
 
-        tmp_app
-    }).bind("127.0.0.1:8080")?
+    HttpServer::new(move || {
+        let routes = routes_list.clone();
+        routes.iter().fold(App::new(), |app, route| match route.request_type {
+            Method::GET => app.route(route.path, web::get().to(route.handler)),
+            Method::POST => app.route(route.path, web::post().to(|body: String| async move {
+                post_req(body).await
+            })),
+            _ => app,
+        })
+    })
+    .bind("127.0.0.1:8080")?
     .run()
     .await
 }
