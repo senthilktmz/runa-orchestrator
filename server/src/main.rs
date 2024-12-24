@@ -71,21 +71,27 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WebSocketActor {
     }
 }
 
-/// WebSocket handler
-async fn ws_handler(
-    req: actix_web::HttpRequest,
-    stream: actix_web::web::Payload,
-) -> Result<HttpResponse, actix_web::Error> {
-    ws::start(WebSocketActor, &req, stream)
-}
-
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let routes = ROUTES_LIST.to_vec().clone();
-    serve_requests(routes).await
+    let routes = ROUTES_LIST.to_vec();
+
+    // Wrap ws_handler to match the expected type
+    let wrapped_ws_handler = |req, stream| {
+        Box::pin(ws_handler(req, stream))
+            as Pin<Box<dyn Future<Output = Result<HttpResponse, actix_web::Error>>>>
+    };
+
+    serve_requests(routes, wrapped_ws_handler).await
 }
 
-async fn serve_requests(routes_list: Vec<Route>) -> std::io::Result<()> {
+async fn serve_requests(
+    routes_list: Vec<Route>,
+    websocket_handler: fn(
+        actix_web::HttpRequest,
+        actix_web::web::Payload,
+    ) -> Pin<Box<dyn Future<Output = Result<HttpResponse, actix_web::Error>>>>,
+) -> std::io::Result<()> {
+    
     println!("Starting server");
 
     HttpServer::new(move || {
@@ -97,10 +103,18 @@ async fn serve_requests(routes_list: Vec<Route>) -> std::io::Result<()> {
             _ => app,
         });
 
-        // Add WebSocket route directly
-        app.route("/ws", web::get().to(ws_handler))
+        // Add WebSocket route using the wrapped handler
+        app.route("/ws", web::get().to(websocket_handler))
     })
     .bind("127.0.0.1:8080")?
     .run()
     .await
+}
+
+/// WebSocket handler function
+async fn ws_handler(
+    req: actix_web::HttpRequest,
+    stream: actix_web::web::Payload,
+) -> Result<HttpResponse, actix_web::Error> {
+    ws::start(WebSocketActor, &req, stream)
 }
