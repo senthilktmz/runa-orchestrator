@@ -4,8 +4,8 @@ use std::time::Duration;
 use actix_web::{http::Method, web, App, HttpResponse, HttpServer};
 use actix_web_actors::ws;
 use actix::{Actor, StreamHandler};
-use actix::ActorContext; // For `ctx.stop()`
-use actix::AsyncContext; // For `ctx.run_interval()`
+use actix::ActorContext;
+use actix::AsyncContext;
 
 #[derive(Clone)]
 struct Route {
