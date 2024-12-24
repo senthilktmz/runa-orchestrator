@@ -1,11 +1,16 @@
 use std::future::Future;
 use std::pin::Pin;
-use actix_web::{guard::Method, http::Method, web, App, HttpResponse, HttpServer, Responder};
+use std::time::Duration;
+use actix_web::{http::Method, web, App, HttpResponse, HttpServer};
+use actix_web_actors::ws;
+use actix::{Actor, StreamHandler};
+use actix::ActorContext; // For `ctx.stop()`
+use actix::AsyncContext; // For `ctx.run_interval()`
 
 #[derive(Clone)]
 struct Route {
     path: &'static str,
-    handler: fn() -> Pin<Box<dyn Future<Output =HttpResponse >>>,
+    handler: fn() -> Pin<Box<dyn Future<Output = HttpResponse>>>,
     request_type: Method,
 }
 
@@ -13,7 +18,7 @@ async fn health() -> HttpResponse {
     HttpResponse::Ok().json(serde_json::json!({ "status": "healthy" }))
 }
 
-fn boxed_health() -> Pin<Box<dyn Future<Output = HttpResponse >>> {
+fn boxed_health() -> Pin<Box<dyn Future<Output = HttpResponse>>> {
     Box::pin(health())
 }
 
@@ -24,22 +29,55 @@ async fn post_req(req_body: String) -> HttpResponse {
 }
 
 fn boxed_post_req() -> Pin<Box<dyn Future<Output = HttpResponse>>> {
-    println!("osososos");
     Box::pin(post_req("".to_string()))
 }
 
 const ROUTES_LIST: &[Route] = &[
-    Route{
+    Route {
         path: "/health",
         request_type: Method::GET,
-        handler: boxed_health
+        handler: boxed_health,
     },
     Route {
         path: "/post_req",
         request_type: Method::POST,
-        handler: boxed_post_req
-    }
+        handler: boxed_post_req,
+    },
 ];
+
+/// WebSocket actor
+struct WebSocketActor;
+
+impl Actor for WebSocketActor {
+    type Context = ws::WebsocketContext<Self>;
+
+    fn started(&mut self, ctx: &mut Self::Context) {
+        let mut elapsed = 0;
+        ctx.run_interval(Duration::from_secs(1), move |_, ctx| {
+            elapsed += 1;
+            ctx.text(format!("{} second(s) elapsed", elapsed));
+            if elapsed >= 10 {
+                ctx.stop();
+            }
+        });
+    }
+}
+
+impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WebSocketActor {
+    fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
+        if let Ok(ws::Message::Close(_)) = msg {
+            ctx.stop();
+        }
+    }
+}
+
+/// WebSocket handler
+async fn ws_handler(
+    req: actix_web::HttpRequest,
+    stream: actix_web::web::Payload,
+) -> Result<HttpResponse, actix_web::Error> {
+    ws::start(WebSocketActor, &req, stream)
+}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -51,16 +89,18 @@ async fn serve_requests(routes_list: Vec<Route>) -> std::io::Result<()> {
     println!("Starting server");
 
     HttpServer::new(move || {
-        routes_list.iter().fold(App::new(), |app, route| match route.request_type {
+        let app = routes_list.iter().fold(App::new(), |app, route| match route.request_type {
             Method::GET => app.route(route.path, web::get().to(route.handler)),
             Method::POST => app.route(route.path, web::post().to(|body: String| async move {
                 post_req(body).await
             })),
             _ => app,
-        })
+        });
+
+        // Add WebSocket route directly
+        app.route("/ws", web::get().to(ws_handler))
     })
     .bind("127.0.0.1:8080")?
     .run()
     .await
 }
-
