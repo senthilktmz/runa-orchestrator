@@ -6,6 +6,7 @@ import ReactFlow, {
     Background,
     useNodesState,
     useEdgesState,
+    MarkerType,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import AceEditor from "react-ace";
@@ -29,12 +30,14 @@ const App = () => {
             id,
             data: { label: `Node ${id}`, script: "" },
             position: { x: Math.random() * 400, y: Math.random() * 400 },
+            sourcePosition: "right", // Connector on the right
+            targetPosition: "left",  // Connector on the left
         };
         setNodes((nds) => [...nds, newNode]);
     };
 
     const onConnect = useCallback(
-        (params) => setEdges((eds) => addEdge(params, eds)),
+        (params) => setEdges((eds) => addEdge({ ...params, markerEnd: { type: MarkerType.Arrow } }, eds)),
         [setEdges]
     );
 
@@ -68,10 +71,59 @@ const App = () => {
         }
     };
 
+    const getParentChildMap = () => {
+        const map = new Map();
+        edges.forEach((edge) => {
+            const parent = edge.source;
+            const child = edge.target;
+            if (!map.has(parent)) {
+                map.set(parent, { children: [], parents: [] });
+            }
+            if (!map.has(child)) {
+                map.set(child, { children: [], parents: [] });
+            }
+            map.get(parent).children.push(child);
+            map.get(child).parents.push(parent);
+        });
+        return map;
+    };
+
+    const topologicalSort = () => {
+        const map = getParentChildMap();
+        const visited = new Set();
+        const result = [];
+
+        const visit = (node) => {
+            if (!visited.has(node)) {
+                visited.add(node);
+                const children = map.get(node)?.children || [];
+                children.forEach(visit);
+                result.push(node);
+            }
+        };
+
+        nodes.forEach((node) => visit(node.id));
+        return result.reverse(); // Parent-first order
+    };
+
+    const runFlow = () => {
+        const sortedNodes = topologicalSort();
+        console.log("Parent-First Order:", sortedNodes);
+        sortedNodes.forEach((nodeId) => {
+            const node = nodes.find((n) => n.id === nodeId);
+            if (node) {
+                console.log(`Running Node ${node.id}:`, node.data.script);
+            }
+        });
+    };
+
     return (
         <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
             <div style={{ padding: "10px", textAlign: "center" }}>
                 <button onClick={addNode}>+ Add Node</button>
+                <button onClick={runFlow} style={{ marginLeft: "10px" }}>
+                    Run
+                </button>
             </div>
             <div style={{ display: "flex", height: "100%" }}>
                 <div style={{ flex: 3 }}>
