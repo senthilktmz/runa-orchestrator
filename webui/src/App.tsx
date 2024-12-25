@@ -20,6 +20,29 @@ import "ace-builds/src-noconflict/mode-xml";
 import "ace-builds/src-noconflict/mode-yaml";
 import "ace-builds/src-noconflict/theme-monokai";
 
+const NODE_TYPE_DEFINITIONS = {
+    node_type_definitions: [
+        {
+            name: "bash node",
+            description: "Executes bash scripts",
+            icon_path: "",
+            is_enabled: "true",
+        },
+        {
+            name: "python node",
+            description: "Executes Python scripts",
+            icon_path: "",
+            is_enabled: "true",
+        },
+        {
+            name: "custom node",
+            description: "Custom functionality",
+            icon_path: "",
+            is_enabled: "true",
+        },
+    ],
+};
+
 const initialNodes = [];
 const initialEdges = [];
 
@@ -30,13 +53,21 @@ const App = () => {
     const [currentNodeName, setCurrentNodeName] = useState("");
     const [currentNodeScript, setCurrentNodeScript] = useState("");
     const [currentNodeType, setCurrentNodeType] = useState("python");
+    const [currentNodeCategory, setCurrentNodeCategory] = useState(
+        NODE_TYPE_DEFINITIONS.node_type_definitions[0].name
+    );
     const [isEditorPopupOpen, setIsEditorPopupOpen] = useState(false);
 
     const addNode = () => {
         const id = `${nodes.length + 1}`;
         const newNode = {
             id,
-            data: { label: `Node ${id}`, script: "", type: "python" },
+            data: {
+                label: `Node ${id}`,
+                script: "",
+                type: "python",
+                category: NODE_TYPE_DEFINITIONS.node_type_definitions[0].name,
+            },
             position: { x: Math.random() * 400, y: Math.random() * 400 },
             sourcePosition: "right",
             targetPosition: "left",
@@ -54,6 +85,7 @@ const App = () => {
         setCurrentNodeName(node.data.label);
         setCurrentNodeScript(node.data.script);
         setCurrentNodeType(node.data.type);
+        setCurrentNodeCategory(node.data.category);
     };
 
     const handleNameChange = (e) => {
@@ -68,6 +100,10 @@ const App = () => {
         setCurrentNodeType(e.target.value);
     };
 
+    const handleCategoryChange = (e) => {
+        setCurrentNodeCategory(e.target.value);
+    };
+
     const saveNodeData = () => {
         if (selectedNode) {
             setNodes((nds) =>
@@ -75,7 +111,13 @@ const App = () => {
                     n.id === selectedNode.id
                         ? {
                             ...n,
-                            data: { ...n.data, label: currentNodeName, script: currentNodeScript, type: currentNodeType },
+                            data: {
+                                ...n.data,
+                                label: currentNodeName,
+                                script: currentNodeScript,
+                                type: currentNodeType,
+                                category: currentNodeCategory,
+                            },
                         }
                         : n
                 )
@@ -88,13 +130,49 @@ const App = () => {
         setIsEditorPopupOpen(!isEditorPopupOpen);
     };
 
-    const runFlow = () => {
-        console.log("Running the flow...");
-        // Example: Log the scripts and types in parent-first order.
+    const getParentChildMap = () => {
+        const map = new Map();
         edges.forEach((edge) => {
-            const source = nodes.find((n) => n.id === edge.source);
-            const target = nodes.find((n) => n.id === edge.target);
-            console.log(`${source?.data.label} (parent) -> ${target?.data.label} (child)`);
+            const parent = edge.source;
+            const child = edge.target;
+            if (!map.has(parent)) {
+                map.set(parent, { children: [], parents: [] });
+            }
+            if (!map.has(child)) {
+                map.set(child, { children: [], parents: [] });
+            }
+            map.get(parent).children.push(child);
+            map.get(child).parents.push(parent);
+        });
+        return map;
+    };
+
+    const topologicalSort = () => {
+        const map = getParentChildMap();
+        const visited = new Set();
+        const result = [];
+
+        const visit = (node) => {
+            if (!visited.has(node)) {
+                visited.add(node);
+                const children = map.get(node)?.children || [];
+                children.forEach(visit);
+                result.push(node);
+            }
+        };
+
+        nodes.forEach((node) => visit(node.id));
+        return result.reverse(); // Parent-first order
+    };
+
+    const runFlow = () => {
+        const sortedNodes = topologicalSort();
+        console.log("Parent-First Order:");
+        sortedNodes.forEach((nodeId) => {
+            const node = nodes.find((n) => n.id === nodeId);
+            if (node) {
+                console.log(`Node: ${node.data.label}, Script: ${node.data.script}`);
+            }
         });
     };
 
@@ -160,6 +238,25 @@ const App = () => {
                                 <option value="json">JSON</option>
                                 <option value="xml">XML</option>
                                 <option value="yaml">YAML</option>
+                            </select>
+                        </label>
+                        <label>
+                            Node Category:
+                            <select
+                                value={currentNodeCategory}
+                                onChange={handleCategoryChange}
+                                style={{
+                                    width: "100%",
+                                    marginBottom: "10px",
+                                    padding: "5px",
+                                    fontSize: "16px",
+                                }}
+                            >
+                                {NODE_TYPE_DEFINITIONS.node_type_definitions.map((def) => (
+                                    <option key={def.name} value={def.name}>
+                                        {def.name}
+                                    </option>
+                                ))}
                             </select>
                         </label>
                         <label>
@@ -245,7 +342,6 @@ const App = () => {
                     </button>
                 </div>
             )}
-            {/* Overlay for Popup */}
             {isEditorPopupOpen && (
                 <div
                     onClick={toggleEditorPopup}
