@@ -2,3 +2,4 @@ cli/target/
 server/target/
 .idea/
 server/.idea/
+webui/node_modules/
