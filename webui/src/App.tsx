@@ -12,6 +12,12 @@ import "reactflow/dist/style.css";
 import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/mode-python";
 import "ace-builds/src-noconflict/mode-sh";
+import "ace-builds/src-noconflict/mode-java";
+import "ace-builds/src-noconflict/mode-c_cpp";
+import "ace-builds/src-noconflict/mode-rust";
+import "ace-builds/src-noconflict/mode-json";
+import "ace-builds/src-noconflict/mode-xml";
+import "ace-builds/src-noconflict/mode-yaml";
 import "ace-builds/src-noconflict/theme-monokai";
 
 const initialNodes = [];
@@ -23,15 +29,17 @@ const App = () => {
     const [selectedNode, setSelectedNode] = useState(null);
     const [currentNodeName, setCurrentNodeName] = useState("");
     const [currentNodeScript, setCurrentNodeScript] = useState("");
+    const [currentNodeType, setCurrentNodeType] = useState("python");
+    const [isEditorPopupOpen, setIsEditorPopupOpen] = useState(false);
 
     const addNode = () => {
         const id = `${nodes.length + 1}`;
         const newNode = {
             id,
-            data: { label: `Node ${id}`, script: "" },
+            data: { label: `Node ${id}`, script: "", type: "python" },
             position: { x: Math.random() * 400, y: Math.random() * 400 },
-            sourcePosition: "right", // Connector on the right
-            targetPosition: "left",  // Connector on the left
+            sourcePosition: "right",
+            targetPosition: "left",
         };
         setNodes((nds) => [...nds, newNode]);
     };
@@ -45,6 +53,7 @@ const App = () => {
         setSelectedNode(node);
         setCurrentNodeName(node.data.label);
         setCurrentNodeScript(node.data.script);
+        setCurrentNodeType(node.data.type);
     };
 
     const handleNameChange = (e) => {
@@ -55,6 +64,10 @@ const App = () => {
         setCurrentNodeScript(value);
     };
 
+    const handleTypeChange = (e) => {
+        setCurrentNodeType(e.target.value);
+    };
+
     const saveNodeData = () => {
         if (selectedNode) {
             setNodes((nds) =>
@@ -62,7 +75,7 @@ const App = () => {
                     n.id === selectedNode.id
                         ? {
                             ...n,
-                            data: { ...n.data, label: currentNodeName, script: currentNodeScript },
+                            data: { ...n.data, label: currentNodeName, script: currentNodeScript, type: currentNodeType },
                         }
                         : n
                 )
@@ -71,49 +84,17 @@ const App = () => {
         }
     };
 
-    const getParentChildMap = () => {
-        const map = new Map();
-        edges.forEach((edge) => {
-            const parent = edge.source;
-            const child = edge.target;
-            if (!map.has(parent)) {
-                map.set(parent, { children: [], parents: [] });
-            }
-            if (!map.has(child)) {
-                map.set(child, { children: [], parents: [] });
-            }
-            map.get(parent).children.push(child);
-            map.get(child).parents.push(parent);
-        });
-        return map;
-    };
-
-    const topologicalSort = () => {
-        const map = getParentChildMap();
-        const visited = new Set();
-        const result = [];
-
-        const visit = (node) => {
-            if (!visited.has(node)) {
-                visited.add(node);
-                const children = map.get(node)?.children || [];
-                children.forEach(visit);
-                result.push(node);
-            }
-        };
-
-        nodes.forEach((node) => visit(node.id));
-        return result.reverse(); // Parent-first order
+    const toggleEditorPopup = () => {
+        setIsEditorPopupOpen(!isEditorPopupOpen);
     };
 
     const runFlow = () => {
-        const sortedNodes = topologicalSort();
-        console.log("Parent-First Order:", sortedNodes);
-        sortedNodes.forEach((nodeId) => {
-            const node = nodes.find((n) => n.id === nodeId);
-            if (node) {
-                console.log(`Running Node ${node.id}:`, node.data.script);
-            }
+        console.log("Running the flow...");
+        // Example: Log the scripts and types in parent-first order.
+        edges.forEach((edge) => {
+            const source = nodes.find((n) => n.id === edge.source);
+            const target = nodes.find((n) => n.id === edge.target);
+            console.log(`${source?.data.label} (parent) -> ${target?.data.label} (child)`);
         });
     };
 
@@ -160,9 +141,31 @@ const App = () => {
                             />
                         </label>
                         <label>
+                            Script Type:
+                            <select
+                                value={currentNodeType}
+                                onChange={handleTypeChange}
+                                style={{
+                                    width: "100%",
+                                    marginBottom: "10px",
+                                    padding: "5px",
+                                    fontSize: "16px",
+                                }}
+                            >
+                                <option value="python">Python</option>
+                                <option value="sh">Bash</option>
+                                <option value="java">Java</option>
+                                <option value="c_cpp">C/C++</option>
+                                <option value="rust">Rust</option>
+                                <option value="json">JSON</option>
+                                <option value="xml">XML</option>
+                                <option value="yaml">YAML</option>
+                            </select>
+                        </label>
+                        <label>
                             Script:
                             <AceEditor
-                                mode="python" // Change to "sh" for Bash or other supported modes
+                                mode={currentNodeType}
                                 theme="monokai"
                                 value={currentNodeScript}
                                 onChange={handleScriptChange}
@@ -170,15 +173,27 @@ const App = () => {
                                 editorProps={{ $blockScrolling: true }}
                                 setOptions={{ useWorker: false }}
                                 width="100%"
-                                height="300px"
+                                height="150px"
                             />
                         </label>
+                        <button
+                            onClick={toggleEditorPopup}
+                            style={{
+                                marginTop: "10px",
+                                padding: "10px 15px",
+                                fontSize: "16px",
+                                cursor: "pointer",
+                            }}
+                        >
+                            Expand Editor
+                        </button>
                         <button
                             onClick={saveNodeData}
                             style={{
                                 marginTop: "10px",
                                 padding: "10px 15px",
                                 fontSize: "16px",
+                                marginLeft: "10px",
                                 cursor: "pointer",
                             }}
                         >
@@ -187,6 +202,64 @@ const App = () => {
                     </div>
                 )}
             </div>
+
+            {/* Popup Editor */}
+            {isEditorPopupOpen && (
+                <div
+                    style={{
+                        position: "fixed",
+                        top: "50%",
+                        left: "50%",
+                        transform: "translate(-50%, -50%)",
+                        width: "80%",
+                        height: "70%",
+                        backgroundColor: "#fff",
+                        border: "1px solid #ccc",
+                        boxShadow: "0 0 10px rgba(0, 0, 0, 0.3)",
+                        zIndex: 1000,
+                        padding: "20px",
+                    }}
+                >
+                    <h3>Expanded Editor</h3>
+                    <AceEditor
+                        mode={currentNodeType}
+                        theme="monokai"
+                        value={currentNodeScript}
+                        onChange={handleScriptChange}
+                        name="popup_script_editor"
+                        editorProps={{ $blockScrolling: true }}
+                        setOptions={{ useWorker: false }}
+                        width="100%"
+                        height="calc(100% - 50px)"
+                    />
+                    <button
+                        onClick={toggleEditorPopup}
+                        style={{
+                            marginTop: "10px",
+                            padding: "10px 15px",
+                            fontSize: "16px",
+                            cursor: "pointer",
+                        }}
+                    >
+                        Close
+                    </button>
+                </div>
+            )}
+            {/* Overlay for Popup */}
+            {isEditorPopupOpen && (
+                <div
+                    onClick={toggleEditorPopup}
+                    style={{
+                        position: "fixed",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        height: "100%",
+                        backgroundColor: "rgba(0, 0, 0, 0.5)",
+                        zIndex: 999,
+                    }}
+                />
+            )}
         </div>
     );
 };
