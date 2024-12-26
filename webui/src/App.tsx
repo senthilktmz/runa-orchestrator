@@ -57,7 +57,7 @@ const App = () => {
         NODE_TYPE_DEFINITIONS.node_type_definitions[0].name
     );
     const [isEditorPopupOpen, setIsEditorPopupOpen] = useState(false);
-
+    //
     const addNode = () => {
         const id = `${nodes.length + 1}`;
         const newNode = {
@@ -71,6 +71,9 @@ const App = () => {
             position: { x: Math.random() * 400, y: Math.random() * 400 },
             sourcePosition: "right",
             targetPosition: "left",
+            style: {
+                width: "50px", // Set the width explicitly to reduce it
+            },
         };
         setNodes((nds) => [...nds, newNode]);
     };
@@ -165,15 +168,45 @@ const App = () => {
         return result.reverse(); // Parent-first order
     };
 
-    const runFlow = () => {
-        const sortedNodes = topologicalSort();
-        console.log("Parent-First Order:");
-        sortedNodes.forEach((nodeId) => {
-            const node = nodes.find((n) => n.id === nodeId);
-            if (node) {
-                console.log(`Node: ${node.data.label}, Script: ${node.data.script}`);
+    const serializeNodes = (nodes, edges) => {
+        const nodeMap = new Map();
+
+        // Initialize each node with children
+        nodes.forEach((node) => {
+            nodeMap.set(node.id, { children: {}, ...node.data });
+        });
+
+        // Populate children based on edges
+        edges.forEach((edge) => {
+            const parent = nodeMap.get(edge.source);
+            if (parent) {
+                parent.children[edge.target] = nodeMap.get(edge.target);
             }
         });
+
+        // Collect root nodes (nodes without incoming edges)
+        const allNodes = {};
+        nodeMap.forEach((value, key) => {
+            if (!edges.some((edge) => edge.target === key)) {
+                allNodes[key] = value; // Root nodes
+            }
+        });
+
+        console.log("Serialized Nodes:", JSON.stringify(allNodes, null, 2));
+    };
+
+    const runFlow = () => {
+
+        serializeNodes(nodes, edges);
+
+        // const sortedNodes = topologicalSort();
+        // console.log("Parent-First Order:");
+        // sortedNodes.forEach((nodeId) => {
+        //     const node = nodes.find((n) => n.id === nodeId);
+        //     if (node) {
+        //         console.log(`Node: ${node.data.label}, Script: ${node.data.script}`);
+        //     }
+        // });
     };
 
     return (
