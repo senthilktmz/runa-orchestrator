@@ -1,10 +1,9 @@
-use runautils::actix_server_util::{serve_requests, Route};
-mod generic_handlers;
-mod health_calls;
-mod ws_handle_task_request;
+mod orchestrator;
 
-use crate::generic_handlers::{boxed_get_req, boxed_post_handler};
-use crate::health_calls::boxed_health;
+use runautils::actix_server_util::{serve_requests, Route};
+use orchestrator::generic_handlers::{boxed_get_req, boxed_post_handler};
+use orchestrator::health_calls::boxed_health;
+use orchestrator::ws_handle_task_request;
 
 const ROUTES_LIST: &[Route] = &[
     Route {
