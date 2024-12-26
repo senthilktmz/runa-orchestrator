@@ -1,9 +1,6 @@
-use actix::{Actor, ActorContext, AsyncContext, StreamHandler};
 use actix_web::{web, HttpResponse};
-use actix_web_actors::ws;
 use std::future::Future;
 use std::pin::Pin;
-use std::time::Duration;
 
 pub async fn get_req() -> HttpResponse {
     HttpResponse::Ok().json(serde_json::json!({ "status": "generic http get handler" }))
