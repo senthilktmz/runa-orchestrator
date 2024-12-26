@@ -1,7 +1,12 @@
+
 [package]
 name = "server"
 version = "0.1.0"
 edition = "2021"
+
+[features]
+server_type_orchestrator = []
+server_type_task_agent = []
 
 [dependencies]
 actix = "0.13.5"
