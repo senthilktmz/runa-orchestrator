@@ -1,8 +1,9 @@
+use runautils::actix_server_util::{serve_requests, Route};
 mod generic_handlers;
 mod health_calls;
-use runautils::actix_server_util::{serve_requests, Route};
+mod ws_handle_task_request;
 
-use crate::generic_handlers::{boxed_get_req, boxed_post_handler, boxed_websocket_handler};
+use crate::generic_handlers::{boxed_get_req, boxed_post_handler};
 use crate::health_calls::boxed_health;
 
 const ROUTES_LIST: &[Route] = &[
@@ -25,11 +26,12 @@ const ROUTES_LIST: &[Route] = &[
         websocket_handler: None,
     },
     Route {
-        path: "/ws",
+        path: "/exec_task_set",
         get_handler: None,
         post_handler: None,
-        websocket_handler: Some(boxed_websocket_handler),
+        websocket_handler: Some(ws_handle_task_request::websocket_handler),
     },
+
 ];
 
 #[actix_web::main]
