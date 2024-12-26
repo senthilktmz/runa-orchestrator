@@ -23,14 +23,14 @@ import "ace-builds/src-noconflict/theme-monokai";
 const NODE_TYPE_DEFINITIONS = {
     node_type_definitions: [
         {
-            name: "bash node",
+            name: "bash",
             description: "Executes bash scripts",
             icon_path: "",
             is_enabled: "true",
         },
         {
-            name: "python node",
-            description: "Executes Python scripts",
+            name: "docker",
+            description: "Executes Docker Image",
             icon_path: "",
             is_enabled: "true",
         },
@@ -198,15 +198,6 @@ const App = () => {
     const runFlow = () => {
 
         serializeNodes(nodes, edges);
-
-        // const sortedNodes = topologicalSort();
-        // console.log("Parent-First Order:");
-        // sortedNodes.forEach((nodeId) => {
-        //     const node = nodes.find((n) => n.id === nodeId);
-        //     if (node) {
-        //         console.log(`Node: ${node.data.label}, Script: ${node.data.script}`);
-        //     }
-        // });
     };
 
     return (
@@ -250,28 +241,6 @@ const App = () => {
                                     fontSize: "16px",
                                 }}
                             />
-                        </label>
-                        <label>
-                            Script Type:
-                            <select
-                                value={currentNodeType}
-                                onChange={handleTypeChange}
-                                style={{
-                                    width: "100%",
-                                    marginBottom: "10px",
-                                    padding: "5px",
-                                    fontSize: "16px",
-                                }}
-                            >
-                                <option value="python">Python</option>
-                                <option value="sh">Bash</option>
-                                <option value="java">Java</option>
-                                <option value="c_cpp">C/C++</option>
-                                <option value="rust">Rust</option>
-                                <option value="json">JSON</option>
-                                <option value="xml">XML</option>
-                                <option value="yaml">YAML</option>
-                            </select>
                         </label>
                         <label>
                             Node Category:
