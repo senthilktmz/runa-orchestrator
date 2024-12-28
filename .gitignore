@@ -1,5 +1,3 @@
-cli/target/
-server/target/
+target/
 .idea/
-server/.idea/
 webui/node_modules/
