@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# Ensure script is executed from the correct directory
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+PROJECT_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
+
+# Define the feature flag for the orchestrator
+FEATURE_FLAG="server_type_orchestrator"
+
+# Check the first argument
+if [[ $1 == "build" ]]; then
+    # Shift arguments to remove 'build'
+    shift
+    echo "Building with feature $FEATURE_FLAG..."
+    cargo build --features "$FEATURE_FLAG" "$@"
+elif [[ $1 == "run" ]]; then
+    # Shift arguments to remove 'run'
+    shift
+    echo "Running with feature $FEATURE_FLAG..."
+    cargo run --features "$FEATURE_FLAG" -- "$@"
+else
+    # Default behavior: Pass all arguments to cargo run
+    echo "Running with feature $FEATURE_FLAG..."
+    cargo run --features "$FEATURE_FLAG" -- "$@"
+fi

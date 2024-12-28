@@ -1,13 +1,9 @@
-
-use std::process;
 use clap::Parser;
 
 mod orchestrator;
-mod orchestrator_routes;
 
-use runautils::actix_server_util::{serve_requests};
-
-
+use runautils::actix_server_util::serve_requests;
+use orchestrator::orchestrator_routes;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -28,8 +24,6 @@ async fn main() -> std::io::Result<()> {
     // for _ in 0..args.count {
     //     println!("Hello {}!", args.name);
     // }
-
-    std::process::exit(1);
 
     let routes = orchestrator_routes::routes();
     serve_requests(routes).await
