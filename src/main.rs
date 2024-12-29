@@ -1,11 +1,11 @@
+use clap::Parser;
 use std::any::Any;
 use std::sync::Arc;
-use clap::Parser;
 
 mod orchestrator;
 
-use runautils::actix_server_util::serve_requests;
 use orchestrator::orchestrator_routes;
+use runautils::actix_server_util::serve_requests;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -18,7 +18,7 @@ struct Args {
 
 #[derive(Clone)]
 pub struct ServerExecDependencies<'a> {
-    pub http_request_decrypt_key: &'a[u8; 32],
+    pub http_request_decrypt_key: &'a [u8; 32],
 }
 
 #[actix_web::main]
@@ -42,12 +42,12 @@ async fn main() -> std::io::Result<()> {
 
 fn get_http_request_decrypt_key() -> &'static [u8; 32] {
     let test_key = &b"0123456789abcdef0123456789abcdef";
-    return test_key
+    return test_key;
 }
 
 fn inject_dependencies() -> Result<Arc<Box<dyn Any + Send + Sync>>, String> {
     let dependencies: Arc<Box<dyn Any + Send + Sync>> =
-        Arc::new(Box::new(ServerExecDependencies{
+        Arc::new(Box::new(ServerExecDependencies {
             http_request_decrypt_key: get_http_request_decrypt_key(),
         }));
     Ok(dependencies)

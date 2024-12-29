@@ -1,7 +1,7 @@
-use runautils::actix_server_util::Route;
 use crate::orchestrator::generic_handlers::{boxed_get_req, boxed_post_handler};
 use crate::orchestrator::health_calls::boxed_health;
 use crate::orchestrator::{task_agent, ws_handle_task_request};
+use runautils::actix_server_util::Route;
 
 const ROUTES_LIST: &[Route] = &[
     Route {
@@ -34,7 +34,7 @@ const ROUTES_LIST: &[Route] = &[
         get_handler: None,
         post_handler: Some(task_agent::post_handler),
         websocket_handler: None,
-    }
+    },
 ];
 
 pub fn routes() -> Vec<Route> {
