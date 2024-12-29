@@ -1,35 +1,36 @@
+
 use actix_web::{web, HttpResponse};
-use runautils::actix_server_util::ServerContext;
+//use runautils::actix_server_util::ServerContext;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
-
+use std::any::Any;
 use runautils::cipher_item;
+use crate::orchestrator::generic_handlers::{extract_payload, ServerContext};
+
 
 async fn post_req(body: web::Json<String>, path: &'static str) -> HttpResponse {
     HttpResponse::Ok().json(serde_json::json!({ "received": *body, "path": path }))
 }
 
+
 pub fn post_handler(
     body: web::Json<String>,
     path: &'static str,
-    server_context: Arc<ServerContext>,
+    server_context: Arc<Box<dyn Any + Send + Sync>>,
 ) -> Pin<Box<dyn Future<Output = HttpResponse>>> {
-    let result = cipher_item::get_decrypted_payload(
-        body.as_str().to_string(),
-        b"0123456789abcdef0123456789abcdef",
-    );
 
-    match result {
-        Ok(decrypted) => {
-            println!("Decrypted Payload: {}", decrypted);
-            //Box::pin(async { HttpResponse::Ok().body("Decrypted successfully") })
+    match extract_payload(body, path, server_context) {
+        Ok((decrypted_payload, original_body)) => {
+            Box::pin(async {
+                HttpResponse::Ok().body(format!("{}", "{}"))
+            })
         }
         Err(err) => {
-            println!("Decryption failed: {}", err);
-            //Box::pin(async { HttpResponse::InternalServerError().body("Decryption failed") })
+            println!("Error in extract_payload: {}", err);
+            Box::pin(async {
+                HttpResponse::InternalServerError().body(format!("Error: {}", "payload format wrong"))
+            })
         }
     }
-
-    Box::pin(post_req(body, path))
 }

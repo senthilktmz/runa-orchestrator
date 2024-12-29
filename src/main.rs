@@ -4,8 +4,9 @@ use std::sync::Arc;
 
 mod orchestrator;
 
-use orchestrator::orchestrator_routes;
+use orchestrator::{orchestrator_routes, generic_handlers::ServerContext};
 use runautils::actix_server_util::serve_requests;
+
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -16,17 +17,17 @@ struct Args {
     port: String,
 }
 
-#[derive(Clone)]
-pub struct ServerExecDependencies<'a> {
-    pub http_request_decrypt_key: &'a [u8; 32],
-}
+//#[derive(Clone)]
+//pub struct ServerContext<'a> {
+//    pub http_request_decrypt_key: &'a [u8; 32],
+//}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let args = Args::parse();
 
-    let dependencies = match inject_dependencies() {
-        Ok(dependencies) => dependencies,
+    let server_context = match get_server_context() {
+        Ok(context) => context,
         Err(e) => {
             println!("Unable to resolve dependencies");
             std::process::exit(1);
@@ -37,7 +38,7 @@ async fn main() -> std::io::Result<()> {
     let port = args.port;
 
     let routes = orchestrator_routes::routes();
-    serve_requests(routes, work_dir, port, dependencies).await
+    serve_requests(routes, work_dir, port, server_context).await
 }
 
 fn get_http_request_decrypt_key() -> &'static [u8; 32] {
@@ -45,12 +46,12 @@ fn get_http_request_decrypt_key() -> &'static [u8; 32] {
     return test_key;
 }
 
-fn inject_dependencies() -> Result<Arc<Box<dyn Any + Send + Sync>>, String> {
-    let dependencies: Arc<Box<dyn Any + Send + Sync>> =
-        Arc::new(Box::new(ServerExecDependencies {
-            http_request_decrypt_key: get_http_request_decrypt_key(),
-        }));
-    Ok(dependencies)
+fn get_server_context() -> Result<Arc<Box<dyn Any + Send + Sync>>, String> {
+
+    let server_context: Arc<Box<dyn Any + Send + Sync>> = Arc::new(Box::new(ServerContext {
+        http_request_decrypt_key: get_http_request_decrypt_key(), // return type &'static [u8; 32]
+    }));
+    Ok(server_context)
 }
 
 //
