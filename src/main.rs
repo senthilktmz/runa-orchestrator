@@ -25,8 +25,6 @@ pub struct ServerExecDependencies<'a> {
 async fn main() -> std::io::Result<()> {
     let args = Args::parse();
 
-    //let dependencies = inject_dependencies();
-
     let dependencies = match inject_dependencies() {
         Ok(dependencies) => dependencies,
         Err(e) => {
@@ -34,10 +32,6 @@ async fn main() -> std::io::Result<()> {
             std::process::exit(1);
         }
     };
-
-
-    println!("Serving on: {}", &args.work_dir);
-    println!("Serving on: {}", &args.port);
 
     let work_dir = args.work_dir;
     let port = args.port;
@@ -56,7 +50,6 @@ fn inject_dependencies() -> Result<Arc<Box<dyn Any + Send + Sync>>, String> {
         Arc::new(Box::new(ServerExecDependencies{
             http_request_decrypt_key: get_http_request_decrypt_key(),
         }));
-    //dependencies
     Ok(dependencies)
 }
 
