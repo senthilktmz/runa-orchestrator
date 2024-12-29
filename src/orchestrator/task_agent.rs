@@ -17,3 +17,10 @@ pub fn post_handler(
     Box::pin(post_req(body, path))
 }
 
+pub fn add_new_task_agent_handler(
+    body: web::Json<String>,
+    path: &'static str,
+    server_context: Arc<ServerContext>
+) -> Pin<Box<dyn Future<Output = HttpResponse>>> {
+    Box::pin(post_req(body, path))
+}

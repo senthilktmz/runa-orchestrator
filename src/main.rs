@@ -1,3 +1,5 @@
+use std::any::Any;
+use std::sync::Arc;
 use clap::Parser;
 
 mod orchestrator;
@@ -14,9 +16,25 @@ struct Args {
     port: String,
 }
 
+#[derive(Clone)]
+pub struct ServerExecDependencies<'a> {
+    pub http_request_decrypt_key: &'a[u8; 32],
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let args = Args::parse();
+
+    //let dependencies = inject_dependencies();
+
+    let dependencies = match inject_dependencies() {
+        Ok(dependencies) => dependencies,
+        Err(e) => {
+            println!("Unable to resolve dependencies");
+            std::process::exit(1);
+        }
+    };
+
 
     println!("Serving on: {}", &args.work_dir);
     println!("Serving on: {}", &args.port);
@@ -25,7 +43,21 @@ async fn main() -> std::io::Result<()> {
     let port = args.port;
 
     let routes = orchestrator_routes::routes();
-    serve_requests(routes, work_dir, port).await
+    serve_requests(routes, work_dir, port, dependencies).await
+}
+
+fn get_http_request_decrypt_key() -> &'static [u8; 32] {
+    let test_key = &b"0123456789abcdef0123456789abcdef";
+    return test_key
+}
+
+fn inject_dependencies() -> Result<Arc<Box<dyn Any + Send + Sync>>, String> {
+    let dependencies: Arc<Box<dyn Any + Send + Sync>> =
+        Arc::new(Box::new(ServerExecDependencies{
+            http_request_decrypt_key: get_http_request_decrypt_key(),
+        }));
+    //dependencies
+    Ok(dependencies)
 }
 
 //
