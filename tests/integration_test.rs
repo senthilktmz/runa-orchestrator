@@ -1,4 +1,4 @@
-use runautils::actix_server_util::{post_http_request};
+use runautils::http_calls::{post_http_request};
 
 #[test]
 fn test_encrypt_and_decrypt_payload() {
