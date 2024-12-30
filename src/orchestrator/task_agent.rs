@@ -2,8 +2,9 @@
 use actix_web::{web, HttpResponse};
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::any::Any;
+use runautils::actix_server_util::ServerStateStore;
 use crate::orchestrator::generic_handlers::{extract_payload, ServerContext};
 use serde_json::{Value};
 use crate::orchestrator::add_task_agent;
@@ -17,6 +18,7 @@ pub fn post_handler(
     body: web::Json<String>,
     path: &'static str,
     server_context: Arc<Box<dyn Any + Send + Sync>>,
+    server_state_store: Arc<Mutex<ServerStateStore>>,
 ) -> Pin<Box<dyn Future<Output = HttpResponse>>> {
 
 

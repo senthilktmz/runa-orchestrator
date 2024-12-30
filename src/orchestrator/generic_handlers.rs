@@ -2,8 +2,11 @@ use actix_web::{web, HttpResponse};
 //use runautils::actix_server_util::ServerContext;
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::any::Any;
+use std::collections::HashMap;
+use runautils::actix_server_util::ServerStateStore;
+use uuid::Uuid;
 use runautils::cipher_item;
 
 pub async fn get_req() -> HttpResponse {
@@ -22,6 +25,7 @@ pub fn boxed_post_handler(
     body: web::Json<String>,
     path: &'static str,
     server_context:  Arc<Box<dyn Any + Send + Sync>>,
+    server_state_store: Arc<Mutex<ServerStateStore>>,
 ) -> Pin<Box<dyn Future<Output = HttpResponse>>> {
     Box::pin(post_req(body, path))
 }
@@ -30,6 +34,8 @@ pub fn boxed_post_handler(
 #[derive(Debug)]
 pub struct ServerContext<'a> {
     pub http_request_decrypt_key: &'a [u8; 32],
+    pub state_storage_map : HashMap<String, Arc<Box<dyn Any + Send + Sync>>>,
+    pub server_execution_instance_uuid: String,
 }
 
 pub fn extract_payload(
