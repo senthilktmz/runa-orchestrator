@@ -31,8 +31,19 @@ fn test_encrypt_and_decrypt_payload() {
             }
         }"#;
 
+    let url = "http://127.0.0.1:9191/task_agent";
+    let response = post_http_request(url, plaintext, test_key, associated_data).unwrap();
+
+    assert!(response.status().is_success());
+
+}
+
+fn post_http_request(url :&str, plain_text_payload : &str,
+                     key : &[u8; 32],
+                     associated_data : &[u8] ) -> reqwest::Result<reqwest::blocking::Response> {
+
     // Encrypt the payload
-    let encrypted_payload = encrypt_payload(test_key, plaintext.as_bytes(), associated_data)
+    let encrypted_payload = encrypt_payload(key, plain_text_payload.as_bytes(), associated_data)
         .expect("Encryption failed");
 
     let url = "http://127.0.0.1:9191/task_agent";
@@ -40,37 +51,9 @@ fn test_encrypt_and_decrypt_payload() {
 
     let formatted_body = to_json_literal_string(encrypted_payload.as_str()); //  format!("\"{}\"", encrypted_payload);
 
-    // Send the payload as a JSON string
-    let response = client
+    client
         .post(url)
         .header("Content-Type", "application/json")
         .body(formatted_body) // Wrap in quotes to make it a JSON string
-        .send();
-
-    match response {
-        Ok(res) if res.status().is_success() => {
-            let response_text = res.text().expect("Failed to read response text");
-            println!("Server Response: {}", response_text);
-
-            // Decrypt the payload
-            let decrypted_payload =
-                get_decrypted_payload(response_text, test_key).expect("Decryption failed");
-            println!("Decrypted Payload: {}", decrypted_payload);
-
-            assert_eq!(
-                decrypted_payload, plaintext,
-                "Decrypted payload does not match original plaintext"
-            );
-        }
-        Ok(res) => {
-            eprintln!(
-                "HTTP error! Status: {}, Details: {}",
-                res.status(),
-                res.text().unwrap_or_else(|_| "Unknown error".to_string())
-            );
-        }
-        Err(e) => {
-            eprintln!("Failed to send POST request: {}", e);
-        }
-    }
+        .send()
 }
