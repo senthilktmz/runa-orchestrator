@@ -129,6 +129,7 @@ async fn forward_to_task_executor(message: &str, sender: mpsc::Sender<String>) -
                 }
             }
             Ok(tokio_tungstenite::tungstenite::protocol::Message::Close(_)) => {
+                println!("Client task executor closed the connection");
                 break;
             }
             Ok(_) => continue, // Skip other message types
