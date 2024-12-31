@@ -1,12 +1,15 @@
+use std::future::Future;
+use std::pin::Pin;
 use crate::orchestrator::task_agent::TaskAgent;
 use runautils::actix_server_util::ServerStateStore;
 use serde_json::Value;
 use std::sync::{Arc, Mutex};
+use actix_web::HttpResponse;
 
 pub fn process_add_task_agent(
     command_params: &Value,
     server_state: Arc<Mutex<ServerStateStore>>,
-) -> Result<(), String> {
+) -> Result<Pin<Box<dyn Future<Output = HttpResponse>>>, String> {
     let command_data = command_params
         .get("command_data")
         .ok_or("Missing command_data")?;
@@ -79,5 +82,5 @@ pub fn process_add_task_agent(
 
     hashmap.insert(ip_or_name.to_string(), Arc::new(Box::new(task_agent)));
 
-    Ok(())
+    Ok(Box::pin(async { HttpResponse::Ok().body(format!("{}", "{}")) }))
 }
