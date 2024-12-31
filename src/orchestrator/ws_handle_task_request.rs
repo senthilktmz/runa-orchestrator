@@ -1,3 +1,6 @@
+
+use actix::*;
+use tokio::sync::mpsc;
 use serde_json::{self, Value};
 use std::any::Any;
 use actix::{Actor, ActorContext, AsyncContext, StreamHandler};
@@ -12,6 +15,32 @@ use tokio_tungstenite::{connect_async, tungstenite::Message};
 use futures_util::{SinkExt, StreamExt};
 use url::Url;
 use actix::ActorFutureExt;
+
+//struct WebSocketActor;
+
+struct WebSocketActor {
+    server_context: Arc<Box<dyn Any + Send + Sync>>,
+    server_state_store: Arc<Mutex<ServerStateStore>>,
+}
+
+impl Actor for WebSocketActor {
+    type Context = ws::WebsocketContext<Self>;
+}
+
+// Custom Actix message to send responses to the client
+struct SendToClient(String);
+
+impl actix::Message for SendToClient {
+    type Result = ();
+}
+
+impl actix::Handler<SendToClient> for WebSocketActor {
+    type Result = ();
+
+    fn handle(&mut self, msg: SendToClient, ctx: &mut Self::Context) {
+        ctx.text(msg.0); // Send the message to the WebSocket client
+    }
+}
 
 pub fn websocket_handler2(
     req: actix_web::HttpRequest,
@@ -28,91 +57,32 @@ pub fn websocket_handler2(
     })
 }
 
-struct WebSocketActor {
-    server_context: Arc<Box<dyn Any + Send + Sync>>,
-    server_state_store: Arc<Mutex<ServerStateStore>>,
-}
-
-impl Actor for WebSocketActor {
-    type Context = ws::WebsocketContext<Self>;
-
-    fn started(&mut self, ctx: &mut Self::Context) {
-        println!("WebSocket connection started");
-    }
-
-    fn stopped(&mut self, _ctx: &mut Self::Context) {
-        println!("WebSocket connection stopped");
-    }
-}
-
-/// Function to process the JSON message
-fn process_json_message(
-    json_value: &Value,
-    server_context: &Arc<Box<dyn Any + Send + Sync>>,
-    server_state_store: &Arc<Mutex<ServerStateStore>>,
-) -> Result<String, String> {
-
-    println!("--------------------------------------{}", "");
-    println!("{:#?}", json_value);
-    println!("--------------------------------------{}", "");
-    Ok(format!("Processed task: {}", "ok"))
-}
-
-async fn forward_to_task_executor(message: &str) -> Result<String, String> {
-    let url = Url::parse("ws://127.0.0.1:9292/exec_task_set")
-        .map_err(|e| format!("URL parse error: {}", e))?;
-
-    let (ws_stream, _) = connect_async(url)
-        .await
-        .map_err(|e| format!("Connection error: {}", e))?;
-
-    let (mut write, mut read) = ws_stream.split();
-
-    // Forward the original message
-    write.send(Message::Text(message.to_string()))
-        .await
-        .map_err(|e| format!("Send error: {}", e))?;
-
-    // Keep reading messages until connection closes
-    let mut all_responses = Vec::new();
-    while let Some(msg) = read.next().await {
-        match msg {
-            Ok(Message::Text(response)) => {
-                println!("{}", response);
-                all_responses.push(response);
-            },
-            Ok(Message::Close(_)) => {
-                break;
-            },
-            Ok(_) => continue, // Skip other message types
-            Err(e) => return Err(format!("Receive error: {}", e))
-        }
-    }
-
-    if all_responses.is_empty() {
-        Err("No responses received".to_string())
-    } else {
-        Ok(all_responses.join("\n"))
-    }
-}
-
 impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WebSocketActor {
     fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
         match msg {
             Ok(ws::Message::Text(text)) => {
-                let text_clone = text.clone();
-                let fut = async move {
-                    match forward_to_task_executor(&text_clone).await {
-                        Ok(response) => response,
-                        Err(e) => format!("Task executor error: {}", e)
-                    }
-                };
+                // Create a channel to pass responses back to the actor
+                let (sender, mut receiver) = mpsc::channel(100);
 
+                // Clone the actor's address to send messages back
+                let addr = ctx.address();
+
+                // Spawn an async task for the processing logic
                 ctx.spawn(
-                    actix::fut::wrap_future(fut)
-                        .map(|response, _actor: &mut WebSocketActor, ctx: &mut ws::WebsocketContext<WebSocketActor>| {
-                            ctx.text(response);
-                        })
+                    actix::fut::wrap_future(async move {
+                        if let Err(err) = forward_to_task_executor(&text, sender).await {
+                            eprintln!("Error in forward_to_task_executor: {}", err);
+                        }
+                    }),
+                );
+
+                // Spawn another task to receive responses and send them via the actor
+                ctx.spawn(
+                    actix::fut::wrap_future(async move {
+                        while let Some(response) = receiver.recv().await {
+                            addr.do_send(SendToClient(response));
+                        }
+                    }),
                 );
             }
             Ok(ws::Message::Binary(bin)) => {
@@ -130,4 +100,41 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WebSocketActor {
             _ => (),
         }
     }
+}
+
+// The asynchronous function for task execution
+async fn forward_to_task_executor(message: &str, sender: mpsc::Sender<String>) -> Result<(), String> {
+    let url = url::Url::parse("ws://127.0.0.1:9292/exec_task_set")
+        .map_err(|e| format!("URL parse error: {}", e))?;
+
+    let (ws_stream, _) = tokio_tungstenite::connect_async(url)
+        .await
+        .map_err(|e| format!("Connection error: {}", e))?;
+
+    let (mut write, mut read) = ws_stream.split();
+
+    // Forward the original message
+    write
+        .send(tokio_tungstenite::tungstenite::protocol::Message::Text(message.to_string()))
+        .await
+        .map_err(|e| format!("Send error: {}", e))?;
+
+    // Read responses and send them back via the channel
+    while let Some(msg) = read.next().await {
+        match msg {
+            Ok(tokio_tungstenite::tungstenite::protocol::Message::Text(response)) => {
+                if sender.send(response).await.is_err() {
+                    eprintln!("Actor has dropped the channel");
+                    break;
+                }
+            }
+            Ok(tokio_tungstenite::tungstenite::protocol::Message::Close(_)) => {
+                break;
+            }
+            Ok(_) => continue, // Skip other message types
+            Err(e) => return Err(format!("Receive error: {}", e)),
+        }
+    }
+
+    Ok(())
 }

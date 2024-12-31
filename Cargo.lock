@@ -1952,6 +1952,7 @@ version = "0.1.0"
 dependencies = [
  "actix",
  "actix-cors",
+ "actix-http",
  "actix-web",
  "actix-web-actors",
  "axum 0.7.9",
@@ -1961,6 +1962,7 @@ dependencies = [
  "runautils",
  "serde",
  "serde_json",
+ "tokio",
  "tokio-tungstenite",
  "tungstenite",
  "url",
