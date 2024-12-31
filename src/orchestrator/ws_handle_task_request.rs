@@ -162,6 +162,7 @@ async fn forward_to_task_executor(message: &str) -> Result<String, String> {
     while let Some(msg) = read.next().await {
         match msg {
             Ok(Message::Text(response)) => {
+                println!("{}", response);
                 all_responses.push(response);
             },
             Ok(Message::Close(_)) => {
