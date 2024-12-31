@@ -115,7 +115,7 @@ fn process_json_message(
 
 
 /// Function to forward message to task executor and get response
-async fn forward_to_task_executor(message: &str) -> Result<String, String> {
+async fn forward_to_task_executor0(message: &str) -> Result<String, String> {
     let url = Url::parse("ws://127.0.0.1:9292/exec_task_set")
         .map_err(|e| format!("URL parse error: {}", e))?;
 
@@ -139,6 +139,43 @@ async fn forward_to_task_executor(message: &str) -> Result<String, String> {
         }
     } else {
         Err("No response received".to_string())
+    }
+}
+
+async fn forward_to_task_executor(message: &str) -> Result<String, String> {
+    let url = Url::parse("ws://127.0.0.1:9292/exec_task_set")
+        .map_err(|e| format!("URL parse error: {}", e))?;
+
+    let (ws_stream, _) = connect_async(url)
+        .await
+        .map_err(|e| format!("Connection error: {}", e))?;
+
+    let (mut write, mut read) = ws_stream.split();
+
+    // Forward the original message
+    write.send(Message::Text(message.to_string()))
+        .await
+        .map_err(|e| format!("Send error: {}", e))?;
+
+    // Keep reading messages until connection closes
+    let mut all_responses = Vec::new();
+    while let Some(msg) = read.next().await {
+        match msg {
+            Ok(Message::Text(response)) => {
+                all_responses.push(response);
+            },
+            Ok(Message::Close(_)) => {
+                break;
+            },
+            Ok(_) => continue, // Skip other message types
+            Err(e) => return Err(format!("Receive error: {}", e))
+        }
+    }
+
+    if all_responses.is_empty() {
+        Err("No responses received".to_string())
+    } else {
+        Ok(all_responses.join("\n"))
     }
 }
 
