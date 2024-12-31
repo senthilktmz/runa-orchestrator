@@ -21,7 +21,6 @@ const ROUTES_LIST: &[Route] = &[
         get_handler: None,
         post_handler: Some(boxed_post_handler),
         websocket_handler: None,
-
     },
     Route {
         path: "/exec_task_set",

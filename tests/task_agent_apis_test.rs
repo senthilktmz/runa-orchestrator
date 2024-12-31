@@ -1,4 +1,4 @@
-use runautils::http_calls::{post_http_request};
+use runautils::http_calls::post_http_request;
 use serde::{Deserialize, Serialize};
 
 #[test]
@@ -26,7 +26,6 @@ fn test_add_task_agent() {
         }
     }
 }"#;
-
 
     let params = TaskAgentParams {
         caller_id: "task_agent_self",

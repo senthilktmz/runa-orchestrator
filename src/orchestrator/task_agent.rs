@@ -1,18 +1,16 @@
-
+use crate::orchestrator::add_task_agent;
+use crate::orchestrator::generic_handlers::{extract_payload, ServerContext};
 use actix_web::{web, HttpResponse};
+use runautils::actix_server_util::ServerStateStore;
+use serde_json::Value;
+use std::any::Any;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
-use std::any::Any;
-use runautils::actix_server_util::ServerStateStore;
-use crate::orchestrator::generic_handlers::{extract_payload, ServerContext};
-use serde_json::{Value};
-use crate::orchestrator::add_task_agent;
 
 async fn post_req(body: web::Json<String>, path: &'static str) -> HttpResponse {
     HttpResponse::Ok().json(serde_json::json!({ "received": *body, "path": path }))
 }
-
 
 pub fn post_handler(
     body: web::Json<String>,
@@ -20,30 +18,26 @@ pub fn post_handler(
     server_context: Arc<Box<dyn Any + Send + Sync>>,
     server_state_store: Arc<Mutex<ServerStateStore>>,
 ) -> Pin<Box<dyn Future<Output = HttpResponse>>> {
-
-
     match extract_payload(body, path, server_context) {
         Ok((decrypted_payload, original_body)) => {
-
             handle_task_agent_request(decrypted_payload, server_state_store);
 
-            Box::pin(async {
-                HttpResponse::Ok().body(format!("{}", "{}"))
-            })
+            Box::pin(async { HttpResponse::Ok().body(format!("{}", "{}")) })
         }
         Err(err) => {
             println!("Error in extract_payload: {}", err);
             Box::pin(async {
-                HttpResponse::InternalServerError().body(format!("Error: {}", "payload format wrong"))
+                HttpResponse::InternalServerError()
+                    .body(format!("Error: {}", "payload format wrong"))
             })
         }
     }
 }
 
 fn handle_task_agent_request(
-    payload :String,
-    server_state: Arc<Mutex<ServerStateStore>>) -> Result<(), String> {
-
+    payload: String,
+    server_state: Arc<Mutex<ServerStateStore>>,
+) -> Result<(), String> {
     let parsed_json: Value = serde_json::from_str(payload.as_str()).map_err(|e| e.to_string())?;
 
     let command_params = parsed_json
@@ -67,7 +61,6 @@ fn handle_task_agent_request(
 
     Ok(())
 }
-
 
 #[derive(Debug, Clone)]
 pub struct TaskAgent {

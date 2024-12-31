@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 mod orchestrator;
 
-use orchestrator::{orchestrator_routes, generic_handlers::ServerContext};
+use orchestrator::{generic_handlers::ServerContext, orchestrator_routes};
 use runautils::actix_server_util::serve_requests;
 use uuid::Uuid;
 
@@ -42,17 +42,13 @@ fn get_http_request_decrypt_key() -> &'static [u8; 32] {
 }
 
 fn get_server_context() -> Result<Arc<Box<dyn Any + Send + Sync>>, String> {
-
     let server_context: Arc<Box<dyn Any + Send + Sync>> = Arc::new(Box::new(ServerContext {
         http_request_decrypt_key: get_http_request_decrypt_key(),
         state_storage_map: Default::default(),
         server_execution_instance_uuid: generate_uuid(),
-
     }));
     Ok(server_context)
 }
-
-
 
 fn generate_uuid() -> String {
     Uuid::new_v4().to_string()
