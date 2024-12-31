@@ -26,7 +26,7 @@ const ROUTES_LIST: &[Route] = &[
         path: "/exec_task_set",
         get_handler: None,
         post_handler: None,
-        websocket_handler: Some(ws_handle_task_request::websocket_handler),
+        websocket_handler: Some(ws_handle_task_request::websocket_handler2),
     },
     // task agent add, remove, update, read
     Route {

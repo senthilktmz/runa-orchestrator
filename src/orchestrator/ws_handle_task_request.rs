@@ -1,23 +1,25 @@
+use std::any::Any;
 use actix::{Actor, ActorContext, AsyncContext, StreamHandler};
 use actix_web::{web, HttpResponse};
 use actix_web_actors::ws;
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use runautils::actix_server_util::ServerStateStore;
 
-async fn websocket_handler_impl(
+pub fn websocket_handler2(
     req: actix_web::HttpRequest,
     stream: actix_web::web::Payload,
-) -> Result<HttpResponse, actix_web::Error> {
-    let start = ws::start(WebSocketActor, &req, stream);
-    start
-}
-
-pub fn websocket_handler(
-    req: actix_web::HttpRequest,
-    stream: actix_web::web::Payload,
+    server_context: Arc<Box<dyn Any + Send + Sync>>,
+    server_state_store: Arc<Mutex<ServerStateStore>>,
 ) -> Pin<Box<dyn Future<Output = Result<HttpResponse, actix_web::Error>>>> {
-    Box::pin(websocket_handler_impl(req, stream))
+    Box::pin(async move {
+
+        println!("WebSocket handler invoked with server context and state store");
+
+        ws::start(WebSocketActor, &req, stream)
+    })
 }
 
 struct WebSocketActor;
