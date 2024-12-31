@@ -1,13 +1,13 @@
 
 #### Build Orchestrator
 ```bash
-cargo build --features server_type_orchestrator
+cargo build
 ```
 
 
 #### Run Orchestrator
 ```bash
-cargo run --features server_type_orchestrator -- --work-dir=/tmp/ssks89 --port=9829
+cargo run -- --work-dir workdir01 --port 9191
 ```
 
 #### Build task_agent

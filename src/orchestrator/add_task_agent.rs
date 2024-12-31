@@ -1,6 +1,11 @@
+use std::sync::{Arc, Mutex};
+use runautils::actix_server_util::ServerStateStore;
 use serde_json::Value;
+use crate::orchestrator::task_agent::{TaskAgent};
 
-pub fn process_add_task_agent(command_params: &Value) -> Result<(), String> {
+pub fn process_add_task_agent(
+    command_params: &Value,
+    server_state: Arc<Mutex<ServerStateStore>>) -> Result<(), String> {
 
     let command_data = command_params.
         get("command_data")
@@ -21,5 +26,41 @@ pub fn process_add_task_agent(command_params: &Value) -> Result<(), String> {
     println!("OS Version: {}", os_version);
     println!("Caller ID: {}", caller_id);
 
+    // Step 1: Acquire the lock on ServerStateStore
+    let hashmap_lock =
+        server_state.lock().expect("Failed to acquire lock on ServerStateStore");
+    println!("Acquired lock on ServerStateStore");
+
+    let mut hashmap = hashmap_lock.state.lock().expect("Failed to acquire lock on hashmap lock");
+
+
+    println!("Current server state:");
+    if hashmap.is_empty() {
+        println!("  HashMap is empty");
+    } else {
+        for (key, value) in hashmap.iter() {
+            println!("Key: {}", key);
+            if let Some(task_agent) = value.as_ref().as_ref().downcast_ref::<TaskAgent>() {
+                println!("  Agent details: {:?}", task_agent);
+            } else {
+                println!("  Value couldn't be downcasted to TaskAgent");
+            }
+        }
+    }
+
+
+    let task_agent = TaskAgent {
+        ip_or_name: ip_or_name.to_string(),
+        caller_id: caller_id.to_string(),
+        port: port.to_string(),
+        os_type: os_type.to_string(),
+        arch_type: arch_type.to_string(),
+        os_version: os_version.to_string(),
+    };
+
+    hashmap.insert(ip_or_name.to_string(), Arc::new(Box::new(task_agent)));
+
     Ok(())
 }
+
+

@@ -25,7 +25,7 @@ pub fn post_handler(
     match extract_payload(body, path, server_context) {
         Ok((decrypted_payload, original_body)) => {
 
-            handle_task_agent_request(decrypted_payload);
+            handle_task_agent_request(decrypted_payload, server_state_store);
 
             Box::pin(async {
                 HttpResponse::Ok().body(format!("{}", "{}"))
@@ -40,7 +40,9 @@ pub fn post_handler(
     }
 }
 
-fn handle_task_agent_request(payload :String) -> Result<(), String> {
+fn handle_task_agent_request(
+    payload :String,
+    server_state: Arc<Mutex<ServerStateStore>>) -> Result<(), String> {
 
     let parsed_json: Value = serde_json::from_str(payload.as_str()).map_err(|e| e.to_string())?;
 
@@ -56,7 +58,7 @@ fn handle_task_agent_request(payload :String) -> Result<(), String> {
 
     match command_type {
         "add_task_agent" => {
-            add_task_agent::process_add_task_agent(command_params)?;
+            add_task_agent::process_add_task_agent(command_params, server_state)?;
         }
         _ => {
             println!("Unsupported command type: {}", command_type);
@@ -67,3 +69,12 @@ fn handle_task_agent_request(payload :String) -> Result<(), String> {
 }
 
 
+#[derive(Debug, Clone)]
+pub struct TaskAgent {
+    pub ip_or_name: String,
+    pub caller_id: String,
+    pub port: String,
+    pub os_type: String,
+    pub arch_type: String,
+    pub os_version: String,
+}
